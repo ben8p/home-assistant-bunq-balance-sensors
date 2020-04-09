@@ -215,11 +215,12 @@ class BunqData:
 
     async def async_update(self, *_):
         """Update data."""
+        accounts = []
         try:
             # get new data from api
             accounts = get_account_data(self._user_id, self._session_token)
         except Exception as exception:
-            _LOGGER.error('Error updating sensor: %s', exception)
+            _LOGGER.error('Error updating sensor: %s', sys.exc_info()[0])
 
         # create a dict with account id as key and account data as value
         self.data = {account['id']: float(account['balance']['value']) for account in accounts}
