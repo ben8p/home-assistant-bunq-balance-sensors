@@ -152,7 +152,7 @@ class BunqBalanceSensor(Entity):
     def __init__(self, account):
         """Initialize the sensor."""
         self.id = account['id']
-        self._name = account['description']
+        self._name = 'bunq_' + account['description']
         self._state = float(account['balance']['value'])
         self._unit_of_measurement = account['currency']
 
