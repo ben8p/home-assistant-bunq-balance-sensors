@@ -32,11 +32,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 _LOGGER = logging.getLogger(__name__)
 
-PRIVATE_KEY_CLIENT = ''
-PUBLIC_KEY_CLIENT = ''
-REQUEST_ID = ''
+USE_SANDBOX = False
+
 GEOLOCATION = '0 0 0 0 000'
-HOST = 'https://api.bunq.com' # 'https://public-api.sandbox.bunq.com'
+HOST = 'https://public-api.sandbox.bunq.com' if USE_SANDBOX else 'https://api.bunq.com'
+
+USER_ID = ''
+SESSION_TOKEN = ''
+CONFIG = {}
 
 def get_id(length):
     id = ''
@@ -71,21 +74,23 @@ def generate_signature(string_to_sign: str, keys: RsaKey) -> str:
     sign = signer.sign(digest)
     return b64encode(sign)
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up bunq sensors."""
-    keys = RSA.generate(2048)
-    PRIVATE_KEY_CLIENT = keys.export_key(format='PEM', passphrase=None, pkcs=8).decode('utf-8')
-    PUBLIC_KEY_CLIENT = keys.publickey().export_key(format='PEM', passphrase=None, pkcs=8).decode('utf-8')
-    REQUEST_ID = get_id(20)
+def generate_context():
+    global REQUEST_ID
+    global USER_ID
+    global SESSION_TOKEN
 
-    sensors = []
-    user_id = ''
-    session_token = ''
+    REQUEST_ID = get_id(20)
+    USER_ID = ''
+    SESSION_TOKEN = ''
+
+    keys = RSA.generate(2048)
+    private_key_client = keys.export_key(format='PEM', passphrase=None, pkcs=8).decode('utf-8')
+    public_key_client = keys.publickey().export_key(format='PEM', passphrase=None, pkcs=8).decode('utf-8')
     installation_token = ''
 
     try:
         # setup api context
-        installation_response = requests.post(HOST + '/v1/installation', data = json.dumps({'client_public_key': PUBLIC_KEY_CLIENT}), headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': ''})
+        installation_response = requests.post(HOST + '/v1/installation', data = json.dumps({'client_public_key': public_key_client}), headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': ''})
         installation = installation_response.json()
         installation_token = get_token(installation)
     except requests.exceptions.HTTPError as http_error:
@@ -104,29 +109,39 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         _LOGGER.error('Error with installation api (request_exception): %s', request_exception)
         raise PlatformNotReady
     except Exception as exception:
-        _LOGGER.error('Error with installation api (exception): %s - PUBLIC_KEY_CLIENT: %s - installation json: %s', sys.exc_info()[0], PUBLIC_KEY_CLIENT, installation)
+        _LOGGER.error('Error with installation api (exception): %s - public_key_client: %s - installation json: %s', sys.exc_info()[0], public_key_client, installation)
         raise PlatformNotReady
 
     try:
-        device_server_response = requests.post(HOST + '/v1/device-server', data = json.dumps({'description': 'Home Assistant', 'secret': config[CONF_API_KEY], 'permitted_ips': config[CONF_PERMITTED_IPS].split(',')}), headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': '', 'X-Bunq-Client-Authentication': installation_token})
+        device_server_response = requests.post(HOST + '/v1/device-server', data = json.dumps({'description': 'Home Assistant', 'secret': CONFIG[CONF_API_KEY], 'permitted_ips': CONFIG[CONF_PERMITTED_IPS].split(',')}), headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': '', 'X-Bunq-Client-Authentication': installation_token})
     except Exception as exception:
         _LOGGER.error('Error with device-server api: %s', sys.exc_info()[0])
         raise PlatformNotReady
 
     try:
-        body = json.dumps({'secret': config[CONF_API_KEY]})
+        body = json.dumps({'secret': CONFIG[CONF_API_KEY]})
         signature = generate_signature(body, keys)
         session_server_response = requests.post(HOST + '/v1/session-server', data = body, headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': signature, 'X-Bunq-Client-Authentication': installation_token})
         session_server = session_server_response.json()
-        user_id = get_user_id(session_server)
-        session_token = get_token(session_server)
+        USER_ID = get_user_id(session_server)
+        SESSION_TOKEN = get_token(session_server)
     except Exception as exception:
         _LOGGER.error('Error with session-server api: %s - session_server : %s', sys.exc_info()[0], session_server)
         raise PlatformNotReady
 
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up bunq sensors."""
+    global CONFIG
+    CONFIG = config
+
+    sensors = []
+    
+    generate_context()
+
     # create sensors
     try:
-        for account in get_account_data(user_id, session_token):
+        for account in get_account_data():
             sensors.append(BunqBalanceSensor(account))
     except Exception as exception:
         _LOGGER.error('Error setting up sensor: %s', sys.exc_info()[0])
@@ -135,14 +150,40 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(sensors, True)
 
     # schedule updates for sensors
-    data = BunqData(hass, user_id, session_token, sensors)
+    data = BunqData(hass, sensors)
     await data.schedule_update(UPDATE_INTERVAL)
 
+def get_monetary_accounts():
+    try:
+        response = requests.get(HOST + '/v1/user/' + str(USER_ID) + '/monetary-account', headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': '', 'X-Bunq-Client-Authentication': SESSION_TOKEN})
+    except requests.exceptions.HTTPError as http_error:
+        _LOGGER.error('Error with monetary-account api (http_error): %s', http_error)
+        raise PlatformNotReady
+    except requests.exceptions.ConnectionError as connection_error:
+        _LOGGER.error('Error with monetary-account api (connection_error): %s', connection_error)
+        raise PlatformNotReady
+    except requests.exceptions.Timeout as timeout_error:
+        _LOGGER.error('Error with monetary-account api (timeout_error): %s', timeout_error)
+        raise PlatformNotReady
+    except requests.exceptions.TooManyRedirects as too_many_redirects_error:
+        _LOGGER.error('Error with monetary-account api (too_many_redirects_error): %s', too_many_redirects_error)
+        raise PlatformNotReady
+    except requests.exceptions.RequestException as request_exception:
+        _LOGGER.error('Error with monetary-account api (request_exception): %s', request_exception)
+        raise PlatformNotReady
+    except Exception as exception:
+        _LOGGER.error('Error with monetary-account api (exception): %s', sys.exc_info()[0])
+        raise PlatformNotReady
+    return response
 
-def get_account_data(user_id, session_token):
+def get_account_data():
     """Get active bunq accounts."""
-    active_accounts = []
-    response = requests.get(HOST + '/v1/user/' + str(user_id) + '/monetary-account', headers = {'Content-Type': 'application/json', 'User-Agent': 'HomeAssistant', 'X-Bunq-Language': 'en_US', 'X-Bunq-Region': 'nl_NL', 'X-Bunq-Client-Request-Id': REQUEST_ID, 'X-Bunq-Geolocation': GEOLOCATION, 'X-Bunq-Client-Signature': '', 'X-Bunq-Client-Authentication': session_token})
+    accounts = {}
+    response = get_monetary_accounts()
+    if response.status_code != 200:
+        print('bunq - need a new context', response.json())
+        generate_context()
+        response = get_monetary_accounts()
     accounts = response.json()
     return get_active_accounts(accounts)
 
@@ -191,10 +232,8 @@ class BunqBalanceSensor(Entity):
 class BunqData:
     """Get the latest data and updates the sensors."""
 
-    def __init__(self, hass, user_id, session_token, sensors):
+    def __init__(self, hass, sensors):
         """Initialize the data object."""
-        self._user_id = user_id
-        self._session_token = session_token
         self._sensors = sensors
         self.data = {}
         self.hass = hass
@@ -218,7 +257,7 @@ class BunqData:
         accounts = []
         try:
             # get new data from api
-            accounts = get_account_data(self._user_id, self._session_token)
+            accounts = get_account_data()
         except Exception as exception:
             _LOGGER.error('Error updating sensor: %s', sys.exc_info()[0])
 
