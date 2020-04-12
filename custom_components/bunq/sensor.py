@@ -29,7 +29,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     """Set up bunq sensors."""
     sensors = []
 
-    use_sandbox(True)
+    use_sandbox(False)
     set_api_key(config[_CONF_API_KEY])
     set_permitted_ips(config[_CONF_PERMITTED_IPS])
 
