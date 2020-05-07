@@ -46,11 +46,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     # create sensors
     try:
         for account in active_accounts:
-            sensors.append(
-                BunqBalanceSensor(
-                    account, get_account_transactions(account["id"], False)
-                )
+            sensor = BunqBalanceSensor(
+                account, get_account_transactions(account["id"], False)
             )
+            sensors.append(sensor)
     except:
         _LOGGER.error("Error setting up sensor: %s", sys.exc_info()[0])
         raise PlatformNotReady
