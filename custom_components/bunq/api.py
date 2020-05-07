@@ -16,6 +16,14 @@ _LOGGER = logging.getLogger("bunq")
 
 _GEOLOCATION = "0 0 0 0 000"
 
+_HEADER_DEFAULTS = {
+    "Content-Type": "application/json",
+    "User-Agent": "HomeAssistant",
+    "X-Bunq-Language": "en_US",
+    "X-Bunq-Region": "nl_NL",
+    "X-Bunq-Geolocation": _GEOLOCATION,
+}
+
 _host = ""
 _api_key = ""
 _permitted_ips = ""
@@ -91,13 +99,9 @@ def _setup_context():
             _host + "/v1/installation",
             data=json.dumps({"client_public_key": public_key_client}),
             headers={
-                "Content-Type": "application/json",
-                "User-Agent": "HomeAssistant",
-                "X-Bunq-Language": "en_US",
-                "X-Bunq-Region": "nl_NL",
-                "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Geolocation": _GEOLOCATION,
+                **_HEADER_DEFAULTS,
                 "X-Bunq-Client-Signature": "",
+                "X-Bunq-Client-Request-Id": _request_id,
             },
         )
         installation = installation_response.json()
@@ -145,12 +149,8 @@ def _setup_context():
                 }
             ),
             headers={
-                "Content-Type": "application/json",
-                "User-Agent": "HomeAssistant",
-                "X-Bunq-Language": "en_US",
-                "X-Bunq-Region": "nl_NL",
+                **_HEADER_DEFAULTS,
                 "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Geolocation": _GEOLOCATION,
                 "X-Bunq-Client-Signature": "",
                 "X-Bunq-Client-Authentication": installation_token,
             },
@@ -167,12 +167,8 @@ def _setup_context():
             _host + "/v1/session-server",
             data=body,
             headers={
-                "Content-Type": "application/json",
-                "User-Agent": "HomeAssistant",
-                "X-Bunq-Language": "en_US",
-                "X-Bunq-Region": "nl_NL",
+                **_HEADER_DEFAULTS,
                 "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Geolocation": _GEOLOCATION,
                 "X-Bunq-Client-Signature": signature,
                 "X-Bunq-Client-Authentication": installation_token,
             },
@@ -195,12 +191,8 @@ def _fetch_monetary_accounts():
         response = requests.get(
             _host + "/v1/user/" + str(_user_id) + "/monetary-account",
             headers={
-                "Content-Type": "application/json",
-                "User-Agent": "HomeAssistant",
-                "X-Bunq-Language": "en_US",
-                "X-Bunq-Region": "nl_NL",
+                **_HEADER_DEFAULTS,
                 "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Geolocation": _GEOLOCATION,
                 "X-Bunq-Client-Signature": "",
                 "X-Bunq-Client-Authentication": _session_token,
             },
@@ -247,12 +239,8 @@ def _fetch_monetary_account_transactions(account_id):
             + str(account_id)
             + "/payment",
             headers={
-                "Content-Type": "application/json",
-                "User-Agent": "HomeAssistant",
-                "X-Bunq-Language": "en_US",
-                "X-Bunq-Region": "nl_NL",
+                **_HEADER_DEFAULTS,
                 "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Geolocation": _GEOLOCATION,
                 "X-Bunq-Client-Signature": "",
                 "X-Bunq-Client-Authentication": _session_token,
             },
