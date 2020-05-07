@@ -107,27 +107,13 @@ def _setup_context():
         installation = installation_response.json()
         _LOGGER.debug("installation response: %s", installation)
         installation_token = _get_token(installation)
-    except requests.exceptions.HTTPError as http_error:
-        _LOGGER.error("Error with installation api (http_error): %s", http_error)
-        raise PlatformNotReady
-    except requests.exceptions.ConnectionError as connection_error:
-        _LOGGER.error(
-            "Error with installation api (connection_error): %s", connection_error
-        )
-        raise PlatformNotReady
-    except requests.exceptions.Timeout as timeout_error:
-        _LOGGER.error("Error with installation api (timeout_error): %s", timeout_error)
-        raise PlatformNotReady
-    except requests.exceptions.TooManyRedirects as too_many_redirects_error:
-        _LOGGER.error(
-            "Error with installation api (too_many_redirects_error): %s",
-            too_many_redirects_error,
-        )
-        raise PlatformNotReady
-    except requests.exceptions.RequestException as request_exception:
-        _LOGGER.error(
-            "Error with installation api (request_exception): %s", request_exception
-        )
+    except (
+        requests.exceptions.HTTPError,
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+        requests.exceptions.TooManyRedirects,
+    ) as ex:
+        _LOGGER.error("Error with installation api (%s): %s", type(ex).__name__, ex)
         raise PlatformNotReady
     except:
         _LOGGER.error(
@@ -197,29 +183,14 @@ def _fetch_monetary_accounts():
                 "X-Bunq-Client-Authentication": _session_token,
             },
         )
-    except requests.exceptions.HTTPError as http_error:
-        _LOGGER.error("Error with monetary-account api (http_error): %s", http_error)
-        raise PlatformNotReady
-    except requests.exceptions.ConnectionError as connection_error:
-        _LOGGER.error(
-            "Error with monetary-account api (connection_error): %s", connection_error
-        )
-        raise PlatformNotReady
-    except requests.exceptions.Timeout as timeout_error:
-        _LOGGER.error(
-            "Error with monetary-account api (timeout_error): %s", timeout_error
-        )
-        raise PlatformNotReady
-    except requests.exceptions.TooManyRedirects as too_many_redirects_error:
-        _LOGGER.error(
-            "Error with monetary-account api (too_many_redirects_error): %s",
-            too_many_redirects_error,
-        )
-        raise PlatformNotReady
-    except requests.exceptions.RequestException as request_exception:
-        _LOGGER.error(
-            "Error with monetary-account api (request_exception): %s", request_exception
-        )
+    except (
+        requests.exceptions.HTTPError,
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+        requests.exceptions.TooManyRedirects,
+        requests.exceptions.RequestException,
+    ) as ex:
+        _LOGGER.error("Error with monetary-account api (%s): %s", type(ex).__name__, ex)
         raise PlatformNotReady
     except:
         _LOGGER.error(
@@ -245,25 +216,14 @@ def _fetch_monetary_account_transactions(account_id):
                 "X-Bunq-Client-Authentication": _session_token,
             },
         )
-    except requests.exceptions.HTTPError as http_error:
-        _LOGGER.error("Error with payment api (http_error): %s", http_error)
-        raise PlatformNotReady
-    except requests.exceptions.ConnectionError as connection_error:
-        _LOGGER.error("Error with payment api (connection_error): %s", connection_error)
-        raise PlatformNotReady
-    except requests.exceptions.Timeout as timeout_error:
-        _LOGGER.error("Error with payment api (timeout_error): %s", timeout_error)
-        raise PlatformNotReady
-    except requests.exceptions.TooManyRedirects as too_many_redirects_error:
-        _LOGGER.error(
-            "Error with payment api (too_many_redirects_error): %s",
-            too_many_redirects_error,
-        )
-        raise PlatformNotReady
-    except requests.exceptions.RequestException as request_exception:
-        _LOGGER.error(
-            "Error with payment api (request_exception): %s", request_exception
-        )
+    except (
+        requests.exceptions.HTTPError,
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+        requests.exceptions.TooManyRedirects,
+        requests.exceptions.RequestException,
+    ) as ex:
+        _LOGGER.error("Error with payment api (%s): %s", type(ex).__name__, ex)
         raise PlatformNotReady
     except:
         _LOGGER.error("Error with payment api (exception): %s", sys.exc_info()[0])
