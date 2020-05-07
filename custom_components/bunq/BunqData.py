@@ -1,13 +1,13 @@
-
 import asyncio
 import logging
 import sys
 
-from .api import get_active_accounts, get_account_transactions
-
 from homeassistant.helpers.event import async_track_time_interval
 
-_LOGGER = logging.getLogger('bunq')
+from .api import get_account_transactions, get_active_accounts
+
+_LOGGER = logging.getLogger("bunq")
+
 
 class BunqData:
     """Get the latest data and updates the sensors."""
@@ -41,10 +41,12 @@ class BunqData:
             # get new data from api
             accounts = get_active_accounts(False)
         except:
-            _LOGGER.error('Error updating sensor: %s', sys.exc_info()[0])
+            _LOGGER.error("Error updating sensor: %s", sys.exc_info()[0])
 
         # create a dict with account id as key and account data as value
-        self.data = {account['id']: float(account['balance']['value']) for account in accounts}
+        self.data = {
+            account["id"]: float(account["balance"]["value"]) for account in accounts
+        }
 
         # update the sensors
         await self.update_devices()
