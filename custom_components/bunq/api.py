@@ -233,7 +233,7 @@ def _fetch_monetary_account_transactions(account_id):
 
 def get_active_accounts(forceNewSession):
     """Get active bunq accounts."""
-    if forceNewSession == True:
+    if forceNewSession:
         _setup_context()
     response = _fetch_monetary_accounts()
     if response.status_code != 200:
@@ -252,7 +252,7 @@ def get_active_accounts(forceNewSession):
 
 def get_account_transactions(account_id, forceNewSession):
     """Get transactions of an account."""
-    if forceNewSession == True:
+    if forceNewSession:
         _setup_context()
     response = _fetch_monetary_account_transactions(account_id)
     if response.status_code != 200:
