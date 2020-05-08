@@ -14,7 +14,7 @@ This integration provides monetary account balance sensors for Bunq
 
 Where:
 - `<BUNQ_API_SECRET_KEY>` must be replace by the API KEY provided by bunq
-- `<PERMITTED_IPS>` is a list (comma separated, no spaces) of IP addresses allowed to reach the IP  
+- `<PERMITTED_IPS>` is a list (comma separated, no spaces) of IP addresses allowed to reach the API  
    for instance: `1.1.1.1,8.8.8.8`  
    You can use `*` to allow any IP (that comes with a security trad-off)
 
@@ -23,7 +23,7 @@ Each sensor can show the balance as well as a list of transactions.
 You can use the custom card [html-template-card](https://github.com/piotrmachowski/home-assistant-lovelace-html-jinja2-template-card) to display them.
 
 Example of configuration:
-```
+```yaml
 type: 'custom:html-template-card'
 title: Transactions
 ignore_line_breaks: true
