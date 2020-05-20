@@ -5,6 +5,7 @@ import sys
 from base64 import b64encode
 
 import requests
+import aiohttp
 
 from Crypto.PublicKey import RSA
 from Cryptodome.Hash import SHA256
@@ -75,7 +76,7 @@ def _generate_signature(string_to_sign: str, keys: RsaKey) -> str:
     return b64encode(sign)
 
 
-def _setup_context():
+async def _setup_context():
     global _request_id
     global _user_id
     global _session_token
@@ -95,26 +96,21 @@ def _setup_context():
 
     try:
         # setup api context
-        installation_response = requests.post(
-            _host + "/v1/installation",
-            data=json.dumps({"client_public_key": public_key_client}),
-            headers={
-                **_HEADER_DEFAULTS,
-                "X-Bunq-Client-Signature": "",
-                "X-Bunq-Client-Request-Id": _request_id,
-            },
-        )
-        installation = installation_response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                _host + "/v1/installation",
+                headers={
+                    **_HEADER_DEFAULTS,
+                    "X-Bunq-Client-Signature": "",
+                    "X-Bunq-Client-Request-Id": _request_id,
+                },
+                json={"client_public_key": public_key_client},
+                timeout=30
+            ) as installation_response:
+                installation = await installation_response.json()
+
         _LOGGER.debug("installation response: %s", installation)
         installation_token = _get_token(installation)
-    except (
-        requests.exceptions.HTTPError,
-        requests.exceptions.ConnectionError,
-        requests.exceptions.Timeout,
-        requests.exceptions.TooManyRedirects,
-    ) as ex:
-        _LOGGER.error("Error with installation api (%s): %s", type(ex).__name__, ex)
-        raise PlatformNotReady
     except:
         _LOGGER.error(
             "Error with installation api (exception): %s - public_key_client: %s - installation json: %s",
@@ -125,41 +121,46 @@ def _setup_context():
         raise PlatformNotReady
 
     try:
-        device_server_response = requests.post(
-            _host + "/v1/device-server",
-            data=json.dumps(
-                {
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                _host + "/v1/device-server",
+                headers={
+                    **_HEADER_DEFAULTS,
+                    "X-Bunq-Client-Request-Id": _request_id,
+                    "X-Bunq-Client-Signature": "",
+                    "X-Bunq-Client-Authentication": installation_token,
+                },
+                json={
                     "description": "Home Assistant",
                     "secret": _api_key,
                     "permitted_ips": _permitted_ips,
-                }
-            ),
-            headers={
-                **_HEADER_DEFAULTS,
-                "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Client-Signature": "",
-                "X-Bunq-Client-Authentication": installation_token,
-            },
-        )
-        _LOGGER.debug("device-server response: %s", device_server_response.json())
+                },
+                timeout=30
+            ) as device_server_response:
+                device_server = await device_server_response.json()
+                
+        _LOGGER.debug("device-server response: %s", device_server)
     except:
         _LOGGER.error("Error with device-server api: %s", sys.exc_info()[0])
         raise PlatformNotReady
 
     try:
-        body = json.dumps({"secret": _api_key})
-        signature = _generate_signature(body, keys)
-        session_server_response = requests.post(
-            _host + "/v1/session-server",
-            data=body,
-            headers={
-                **_HEADER_DEFAULTS,
-                "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Client-Signature": signature,
-                "X-Bunq-Client-Authentication": installation_token,
-            },
-        )
-        session_server = session_server_response.json()
+        body = {"secret": _api_key}
+        signature = _generate_signature(json.dumps(body), keys)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                _host + "/v1/session-server",
+                headers={
+                    **_HEADER_DEFAULTS,
+                    "X-Bunq-Client-Request-Id": _request_id,
+                    "X-Bunq-Client-Signature": signature.decode("utf-8"),
+                    "X-Bunq-Client-Authentication": installation_token,
+                },
+                json=body,
+                timeout=30
+            ) as session_server_response:
+                session_server = await session_server_response.json()
+                
         _LOGGER.debug("session-server response: %s", session_server)
         _user_id = _get_user_id(session_server)
         _session_token = _get_token(session_server)
@@ -172,74 +173,61 @@ def _setup_context():
         raise PlatformNotReady
 
 
-def _fetch_monetary_accounts():
+async def _fetch_monetary_accounts():
     try:
-        response = requests.get(
-            _host + "/v1/user/" + str(_user_id) + "/monetary-account",
-            headers={
-                **_HEADER_DEFAULTS,
-                "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Client-Signature": "",
-                "X-Bunq-Client-Authentication": _session_token,
-            },
-        )
-    except (
-        requests.exceptions.HTTPError,
-        requests.exceptions.ConnectionError,
-        requests.exceptions.Timeout,
-        requests.exceptions.TooManyRedirects,
-        requests.exceptions.RequestException,
-    ) as ex:
-        _LOGGER.error("Error with monetary-account api (%s): %s", type(ex).__name__, ex)
-        raise PlatformNotReady
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                _host + "/v1/user/" + str(_user_id) + "/monetary-account",
+                headers={
+                    **_HEADER_DEFAULTS,
+                    "X-Bunq-Client-Request-Id": _request_id,
+                    "X-Bunq-Client-Signature": "",
+                    "X-Bunq-Client-Authentication": _session_token,
+                },
+                timeout=30
+            ) as response:
+                json = await response.json()
+                return { "json": json, "status": response.status }
     except:
         _LOGGER.error(
             "Error with monetary-account api (exception): %s", sys.exc_info()[0]
         )
         raise PlatformNotReady
-    return response
 
 
-def _fetch_monetary_account_transactions(account_id):
+async def _fetch_monetary_account_transactions(account_id):
     try:
-        response = requests.get(
-            _host
-            + "/v1/user/"
-            + str(_user_id)
-            + "/monetary-account/"
-            + str(account_id)
-            + "/payment",
-            headers={
-                **_HEADER_DEFAULTS,
-                "X-Bunq-Client-Request-Id": _request_id,
-                "X-Bunq-Client-Signature": "",
-                "X-Bunq-Client-Authentication": _session_token,
-            },
-        )
-    except (
-        requests.exceptions.HTTPError,
-        requests.exceptions.ConnectionError,
-        requests.exceptions.Timeout,
-        requests.exceptions.TooManyRedirects,
-        requests.exceptions.RequestException,
-    ) as ex:
-        _LOGGER.error("Error with payment api (%s): %s", type(ex).__name__, ex)
-        raise PlatformNotReady
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                _host
+                + "/v1/user/"
+                + str(_user_id)
+                + "/monetary-account/"
+                + str(account_id)
+                + "/payment",
+                headers={
+                    **_HEADER_DEFAULTS,
+                    "X-Bunq-Client-Request-Id": _request_id,
+                    "X-Bunq-Client-Signature": "",
+                    "X-Bunq-Client-Authentication": _session_token,
+                },
+                timeout=30
+            ) as response:
+                json = await response.json()
+                return { "json": json, "status": response.status }
     except:
         _LOGGER.error("Error with payment api (exception): %s", sys.exc_info()[0])
         raise PlatformNotReady
-    return response
 
-
-def get_active_accounts(forceNewSession):
+async def get_active_accounts(forceNewSession):
     """Get active bunq accounts."""
     if forceNewSession:
-        _setup_context()
-    response = _fetch_monetary_accounts()
-    if response.status_code != 200:
-        _setup_context()
-        response = _fetch_monetary_accounts()
-    data = response.json()
+        await _setup_context()
+    response = await _fetch_monetary_accounts()
+    if response["status"] != 200:
+        await _setup_context()
+        response = await _fetch_monetary_accounts()
+    data = response["json"]
     _LOGGER.debug("get_active_accounts response: %s", data)
     accounts = []
     for value in data["Response"]:
@@ -250,15 +238,15 @@ def get_active_accounts(forceNewSession):
     return accounts
 
 
-def get_account_transactions(account_id, forceNewSession):
+async def get_account_transactions(account_id, forceNewSession):
     """Get transactions of an account."""
     if forceNewSession:
-        _setup_context()
-    response = _fetch_monetary_account_transactions(account_id)
-    if response.status_code != 200:
-        _setup_context()
-        response = _fetch_monetary_account_transactions(account_id)
-    data = response.json()
+        await _setup_context()
+    response = await _fetch_monetary_account_transactions(account_id)
+    if response["status"] != 200:
+        await _setup_context()
+        response = await _fetch_monetary_account_transactions(account_id)
+    data = response["json"]
     _LOGGER.debug("get_account_transactions response: %s", data)
     transactions = []
     for value in data["Response"]:

@@ -24,7 +24,7 @@ class BunqData:
 
         for sensor in self._sensors:
             if sensor.load_data(self.data):
-                transactions = get_account_transactions(sensor.get_account_id(), False)
+                transactions = await get_account_transactions(sensor.get_account_id(), False)
                 sensor.load_transactions(transactions)
                 tasks.append(sensor.async_update_ha_state())
         if tasks:
@@ -39,7 +39,7 @@ class BunqData:
         accounts = []
         try:
             # get new data from api
-            accounts = get_active_accounts(False)
+            accounts = await get_active_accounts(False)
         except:
             _LOGGER.error("Error updating sensor: %s", sys.exc_info()[0])
 

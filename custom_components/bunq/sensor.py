@@ -41,13 +41,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     set_api_key(config[_CONF_API_KEY])
     set_permitted_ips(config[_CONF_PERMITTED_IPS])
 
-    active_accounts = get_active_accounts(True)
+    active_accounts = await get_active_accounts(True)
 
     # create sensors
     try:
         for account in active_accounts:
+            transactions = await get_account_transactions(account["id"], False)
             sensor = BunqBalanceSensor(
-                account, get_account_transactions(account["id"], False)
+                account, transactions
             )
             sensors.append(sensor)
     except:
