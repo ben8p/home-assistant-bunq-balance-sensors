@@ -1,6 +1,7 @@
 {
 	"domain": "bunq",
 	"name": "bunq",
+	"name": "1.0.0",	
 	"documentation": "https://not.available.yet",
 	"requirements": [],
 	"dependencies": [],
