@@ -4,6 +4,10 @@
 
 This integration provides monetary account balance sensors for Bunq
 
+# Minimum version for HA
+
+2021.12.0+
+
 ## Sensor configuration
 
 ```
