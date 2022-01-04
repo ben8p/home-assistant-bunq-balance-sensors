@@ -24,7 +24,7 @@ class BunqBalanceSensor(Entity):
         return self._name
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         attr = dict()
         attr["transactions"] = self._transactions
         attr["account_id"] = self.get_account_id()
