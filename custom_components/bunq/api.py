@@ -231,8 +231,8 @@ async def get_active_accounts(forceNewSession):
     _LOGGER.debug("get_active_accounts response: %s", data)
     accounts = []
     for value in data["Response"]:
-        if "MonetaryAccountBank" in value:
-            item = value["MonetaryAccountBank"]
+        for account_type in [key for key in value if key in ["MonetaryAccountBank", "MonetaryAccountJoint", "MonetaryAccountLight", "MonetaryAccountSavings"]]:
+            item = value[account_type]
             if "status" in item and item["status"] == "ACTIVE":
                 accounts.append(item)
     return accounts
