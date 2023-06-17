@@ -30,7 +30,7 @@ In order to get the "client id" and the "client secret" follow these steps:
 -   Go to "Developers"
 -   Click OAuth
 -   Click "Add redirect URL"
--   Enter "https://my.home-assistant.io/redirect/oauth/"
+-   Enter "https://my.home-assistant.io/redirect/oauth"
 -   Click "Done"
 -   Click "SHOW CLIENT DETAILS"
 -   use the values when configuring the integration
