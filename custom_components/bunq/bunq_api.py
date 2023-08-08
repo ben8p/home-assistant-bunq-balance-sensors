@@ -3,11 +3,11 @@
 from .models import BunqStatus
 from .const import LOGGER, BunqApiEnvironment, ENVIRONMENT_URLS
 from aiohttp import ClientResponse, ClientSession, ClientError, hdrs
-from typing import  Awaitable, Callable, Optional
+from typing import Awaitable, Callable, Optional
 import asyncio
 import random
 import async_timeout
-from .exceptions import BunqApiError,BunqApiConnectionTimeoutError,BunqApiConnectionError,BunqApiRateLimitError
+from .exceptions import BunqApiError, BunqApiConnectionTimeoutError, BunqApiConnectionError, BunqApiRateLimitError
 import socket
 import json
 from Crypto.PublicKey import RSA
@@ -15,6 +15,7 @@ from Cryptodome.Hash import SHA256
 from Cryptodome.PublicKey.RSA import RsaKey
 from Cryptodome.Signature import PKCS1_v1_5
 from base64 import b64encode
+
 
 class BunqApi():
     """ main api class """
@@ -84,7 +85,7 @@ class BunqApi():
 
         try:
             with async_timeout.timeout(self.request_timeout):
-                response =  await self._session.request(
+                response = await self._session.request(
                     method,
                     url,
                     **kwargs,
@@ -111,19 +112,22 @@ class BunqApi():
                 )
 
             if content_type == "application/json":
-                raise BunqApiError(response.status, json.loads(contents.decode("utf8")))
-            raise BunqApiError(response.status, {"message": contents.decode("utf8")})
+                raise BunqApiError(
+                    response.status, json.loads(contents.decode("utf8")))
+            raise BunqApiError(response.status, {
+                               "message": contents.decode("utf8")})
 
         # Handle empty response
         if response.status == 204:
-            LOGGER.warning('Request to %s resulted in status 204. Your dataset could be out of date', url)
+            LOGGER.warning(
+                'Request to %s resulted in status 204. Your dataset could be out of date', url)
             return
 
         if "application/json" in content_type:
-            result =  await response.json()
+            result = await response.json()
             LOGGER.debug('Response: %s', str(result))
             return result
-        result =  await response.text()
+        result = await response.text()
         LOGGER.debug('Response: %s', str(result))
         return result
 
@@ -159,6 +163,20 @@ class BunqApi():
         return b64encode(sign).decode("utf-8")
 
     async def _update_accounts(self):
+        try:
+            LOGGER.debug("Try to update accounts")
+            await self._update_accounts_no_retry()
+        except BunqApiError as error:
+            LOGGER.debug("Received error %s", str(error))
+            if error.args[0] == 401:
+                LOGGER.debug("Retry to update accounts")
+                self.status.update_user(None, None)
+                await self._setup_context()
+                await self._update_accounts_no_retry()
+            else:
+                raise
+
+    async def _update_accounts_no_retry(self):
         data = await self._fetch_monetary_accounts()
         LOGGER.debug("get_active_accounts response: %s", data)
         accounts = []
@@ -180,9 +198,8 @@ class BunqApi():
                 transactions.append(item)
         self.status.update_account_transactions(account_id, transactions)
 
-
     async def _fetch_monetary_account_transactions(self, account_id):
-        return await self._request(hdrs.METH_GET, "/v1/user/" + self.status.user_id + "/monetary-account/" + str(account_id) + "/payment", token= self.status.session_token)
+        return await self._request(hdrs.METH_GET, "/v1/user/" + self.status.user_id + "/monetary-account/" + str(account_id) + "/payment", token=self.status.session_token)
 
     async def _fetch_monetary_accounts(self):
         return await self._request(hdrs.METH_GET, "/v1/user/" + self.status.user_id + "/monetary-account", token=self.status.session_token)
@@ -210,7 +227,6 @@ class BunqApi():
         device_server = await self._request(hdrs.METH_POST, "/v1/device-server", token=installation_token, json=body)
         LOGGER.debug("device-server response: %s", device_server)
 
-
         body = {"secret": self.token}
         str_body = json.dumps(body)
         signature = self._generate_signature(str_body, keys)
@@ -218,5 +234,5 @@ class BunqApi():
 
         user_id = self._get_user_id(session_server)
         session_token = self._get_token(session_server)
-        self.status.update_user(user_id, session_token)
+        self.status.update_user(str(user_id), str(session_token))
         LOGGER.debug('context updated')
