@@ -2,14 +2,13 @@
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.config_entry_oauth2_flow import (
-    OAuth2Session,
-    async_get_config_entry_implementation,
-)
+    OAuth2Session, async_get_config_entry_implementation)
 
 from .const import DOMAIN
 from .coordinator import BunqDataUpdateCoordinator
+from .services import async_setup_services
 
 PLATFORMS = [Platform.SENSOR]
 
@@ -26,6 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await async_setup_services(hass, coordinator)
 
     return True
 

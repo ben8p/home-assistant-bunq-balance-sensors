@@ -1,13 +1,11 @@
 """oAuth2 functions and classes for Bunq API integration."""
 from __future__ import annotations
 
-from typing import Any
 import sys
+from typing import Any
+
 from homeassistant.components.application_credentials import (
-    AuthImplementation,
-    AuthorizationServer,
-    ClientCredential,
-)
+    AuthImplementation, AuthorizationServer, ClientCredential)
 from homeassistant.core import HomeAssistant
 
 from .const import ENVIRONMENT, ENVIRONMENT_URLS

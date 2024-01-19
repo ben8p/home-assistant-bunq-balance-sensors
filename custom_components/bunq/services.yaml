@@ -1,0 +1,61 @@
+link_account:
+  name: Link account
+  description: Link a monetary account to a card
+  fields:
+    card_entity:
+      name: Card
+      description: The card to link with
+      required: true
+      example: sensor.bunq_maestro_debit_12345
+      selector:
+        entity:
+          integration: bunq
+    account_entity:
+      name: Account
+      description: The entity that will be the primary account for the card
+      required: true
+      example: sensor.bunq_main_account
+      selector:
+        entity:
+          integration: bunq
+          device_class: monetary
+
+transfer:
+  name: Transfer
+  description: Transfer between accounts
+  fields:
+    from_account_entity:
+      name: From account
+      description: The account to transfer the amount from
+      example: sensor.bunq_main_account
+      required: true
+      selector:
+        entity:
+          integration: bunq
+          device_class: monetary
+    to_account_entity:
+      name: To account
+      description: The account to transfer the amount to
+      example: sensor.bunq_secondary_account
+      required: true
+      selector:
+        entity:
+          integration: bunq
+          device_class: monetary
+    amount:
+      name: "Amount"
+      description: The amount to transfer
+      example: 1.23
+      required: true
+      selector:
+        number:
+          min: 0.01
+          max: 1000000
+          mode: box
+    message:
+      name: Message
+      description: A message for the transfer
+      example: ""
+      required: false
+      selector:
+        text:

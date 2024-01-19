@@ -1,9 +1,12 @@
 """Support for bunq account balance."""
 from __future__ import annotations
-from .bunq_balance_sensor import BunqBalanceSensor
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .bunq_balance_sensor import BunqBalanceSensor
+from .bunq_card_sensor import BunqCardSensor
 from .const import DOMAIN
 from .coordinator import BunqDataUpdateCoordinator
 
@@ -16,6 +19,9 @@ async def async_setup_entry(
     sensors = []
     for account in coordinator.bunq.status.accounts:
         sensors.append(BunqBalanceSensor(coordinator, account))
+
+    for card in coordinator.bunq.status.cards:
+        sensors.append(BunqCardSensor(coordinator, card))
 
     async_add_entities(
         sensors
