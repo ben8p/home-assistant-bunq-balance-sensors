@@ -148,7 +148,7 @@ class BunqApi:
         for account in self.status.accounts:
             await self.update_account_transactions(account["id"])
 
-        await self.update_cards()
+        await self._update_cards()
 
         LOGGER.info("Status updated")
         return self.status
@@ -207,7 +207,7 @@ class BunqApi:
                     accounts.append(item)
         self.status.update_accounts(accounts)
 
-    async def update_cards(self):
+    async def _update_cards(self):
         """update card data from bunq"""
         try:
             LOGGER.debug("Try to update cards")
@@ -227,10 +227,10 @@ class BunqApi:
         LOGGER.debug("get cards response: %s", data)
         cards = []
         for value in data["Response"]:
-            for account_type in [
+            for card_type in [
                 key for key in value if key in ["CardDebit", "CardCredit"]
             ]:
-                item = value[account_type]
+                item = value[card_type]
                 if "status" in item and item["status"] == "ACTIVE":
                     cards.append(item)
         self.status.update_cards(cards)
@@ -288,7 +288,7 @@ class BunqApi:
         signature = self._generate_signature(str_body, self.keys)
         result = await self._request(
             hdrs.METH_PUT,
-            "/v1/user/" + self.status.user_id + "/card/" + str(card_id),
+            f"/v1/user/{self.status.user_id}/card/{card_id}",
             token=self.status.session_token,
             signature=signature,
             data=str_body,
@@ -308,12 +308,11 @@ class BunqApi:
             raise f"no alias found for {to_account}"
         alias = to_account["alias"][0]
 
-        if "balance" not in to_account or "currency" not in to_account["balance"]:
+        if "currency" not in to_account:
             raise f"currency not found for {to_account}"
 
-        currency = to_account["balance"]["currency"]
         body = {
-            "amount": {"value": str(amount), "currency": currency},
+            "amount": {"value": str(amount), "currency": to_account["currency"]},
             "counterparty_alias": alias,
             "description": message,
         }

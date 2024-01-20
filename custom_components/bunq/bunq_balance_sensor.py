@@ -1,4 +1,5 @@
 """ bunq sensor"""
+import dataclasses
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -42,19 +43,21 @@ class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
         """Update sensor attributes."""
         LOGGER.debug("update attributes for %s", str(self._attr_unique_id))
 
-        transactions = self.coordinator.bunq.status.account_transactions[
-            str(self._attr_unique_id)
-        ]
-
         account = self.coordinator.bunq.status.get_account(self._attr_unique_id)
         if account is None:
             LOGGER.debug("no account for id %s", str(self._attr_unique_id))
-        else:
-            self._attr_native_value = float(account["balance"]["value"])
-            self.load_transactions(transactions)
+            self._attr_enabled = False
+            return
 
-    def load_transactions(self, transactions):
-        """load transactions"""
+        transactions = self.coordinator.bunq.status.account_transactions[
+            str(self._attr_unique_id)
+        ]
+        self._attr_enabled = True
+        self._attr_native_value = float(account["balance"]["value"])
+        self._load_transactions(transactions)
+
+    def _load_transactions(self, transactions):
+        """Load transactions."""
         trx = []
         for transaction in transactions:
             item = {

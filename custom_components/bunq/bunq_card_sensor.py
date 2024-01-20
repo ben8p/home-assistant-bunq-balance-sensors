@@ -40,46 +40,55 @@ class BunqCardSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _async_update_attrs(self) -> None:
         """Update sensor attributes."""
-        LOGGER.debug(
-            "update attributes for %s", self._attr_extra_state_attributes["card_id"]
-        )
+        card_id = self._attr_extra_state_attributes["card_id"]
+        LOGGER.debug("update attributes for %s", card_id)
 
         card = None
         for value in self.coordinator.bunq.status.cards:
-            if str(value["id"]) == self._attr_extra_state_attributes["card_id"]:
+            if str(value["id"]) == card_id:
                 card = value
+
+        if card is None:
+            LOGGER.debug("no card for id %s", card_id)
+            self._attr_available = False
+            return
+
+        self._attr_available = True
+        self._match_account(card)
         self._attr_extra_state_attributes["limit"] = card["card_limit"]["value"]
         self._attr_extra_state_attributes["limit_atm"] = card["card_limit_atm"]["value"]
 
-        # Linked account
+    def _match_account(self, card) -> None:
+        """Match bunq account id with home assistant entity in state."""
+        self._attr_native_value = ""
+        self._attr_extra_state_attributes["account_entity"] = ""
+
+        if self.hass is None:
+            LOGGER.debug("home assistant not loaded - can't get entity name")
+            return
+
         account_id = ""
-        if card is None:
-            LOGGER.debug(
-                "no card for id %s", self._attr_extra_state_attributes["card_id"]
-            )
-        else:
-            for pin in card["pin_code_assignment"]:
-                if pin["type"] == "PRIMARY" and pin["status"] == "ACTIVE":
-                    account_id = str(pin["monetary_account_id"])
-            LOGGER.debug(
-                "match account %s with card %s",
-                str(account_id),
-                self._attr_extra_state_attributes["card_id"],
-            )
+        for pin in card["pin_code_assignment"]:
+            if pin["type"] == "PRIMARY" and pin["status"] == "ACTIVE":
+                account_id = str(pin["monetary_account_id"])
+        LOGGER.debug(
+            "match account %s with card %s",
+            str(account_id),
+            str(card["id"]),
+        )
+        if account_id == "":
+            LOGGER.debug("no account linked")
+            return
 
-            if account_id == "":
-                LOGGER.debug("no account linked")
+        account_entity = ""
+        friendly = ""
+        for e in self.hass.states.async_all():
+            if str(e.attributes.get("account_id")) == account_id:
+                account_entity = e.entity_id
+                friendly = e.attributes.get("friendly_name") or e.attributes.get("name")
 
-            account_entity = ""
-            friendly = ""
-            if self.hass is None:
-                LOGGER.debug("no hass")
-            else:
-                for e in self.hass.states.async_all():
-                    if str(e.attributes.get("account_id")) == account_id:
-                        account_entity = e.entity_id
-                        friendly = e.attributes.get(
-                            "friendly_name"
-                        ) or e.attributes.get("name")
-            self._attr_native_value = friendly
-            self._attr_extra_state_attributes["account_entity"] = account_entity
+        if account_entity == "":
+            LOGGER.debug("account %s not found in home assistant", account_id)
+
+        self._attr_native_value = friendly
+        self._attr_extra_state_attributes["account_entity"] = account_entity
