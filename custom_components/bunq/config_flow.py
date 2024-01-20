@@ -1,17 +1,18 @@
 """Config flow for Bunq."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 import logging
+from collections.abc import Mapping
 from typing import Any
-
-from .bunq_api import BunqApi
 
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.config_entry_oauth2_flow import AbstractOAuth2FlowHandler
+from homeassistant.helpers.config_entry_oauth2_flow import \
+    AbstractOAuth2FlowHandler
 
+from .bunq_api import BunqApi
 from .const import DOMAIN, ENVIRONMENT, LOGGER
+
 
 class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
     """Config flow to handle Bunq OAuth2 authentication."""

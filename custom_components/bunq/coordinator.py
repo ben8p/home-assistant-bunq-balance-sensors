@@ -5,11 +5,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .models import BunqStatus
-from .exceptions import BunqApiError
-from .const import DOMAIN, ENVIRONMENT, LOGGER, UPDATE_INTERVAL
+from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
+                                                      UpdateFailed)
+
 from .bunq_api import BunqApi
+from .const import DOMAIN, ENVIRONMENT, LOGGER, UPDATE_INTERVAL
+from .exceptions import BunqApiError
+from .models import BunqStatus
+
 
 class BunqDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Bunq data from single endpoint."""

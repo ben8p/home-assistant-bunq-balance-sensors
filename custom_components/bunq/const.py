@@ -1,10 +1,11 @@
 """Constants for bunq integration."""
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Final
-from .models import BunqApiUrls, BunqApiEnvironment
+
+from .models import BunqApiEnvironment, BunqApiUrls
 
 DOMAIN: Final = "bunq"
 
@@ -25,4 +26,13 @@ ENVIRONMENT_URLS = {
 
 LOGGER = logging.getLogger(__package__)
 
-ENVIRONMENT =  BunqApiEnvironment.Production
+ENVIRONMENT = BunqApiEnvironment.Production
+
+ATTR_ACCOUNT_ID = "account_id"
+ATTR_CARD_ID = "card_id"
+ATTR_AMOUNT = "amount"
+ATTR_FROM_ACCOUNT_ENTITY = "from_account_entity"
+ATTR_TO_ACCOUNT_ENTITY = "to_account_entity"
+ATTR_ACCOUNT_ENTITY = "account_entity"
+ATTR_CARD_ENTITY = "card_entity"
+ATTR_MESSAGE = "message"

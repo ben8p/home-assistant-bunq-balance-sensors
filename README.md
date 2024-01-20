@@ -2,7 +2,12 @@
 
 # Bunq Integration
 
-This integration provides monetary account balance sensors for Bunq
+This integration provides access to Bunq:
+
+- monetary account balance sensors including transactions
+- debit- and creditcard sensors with a reference to the linked account
+- a service to transfer funds to own accounts
+- a service to link an account to a card.
 
 # ⚠️⚠️⚠️⚠️⚠️ Backward incompatibility ⚠️⚠️⚠️⚠️⚠️
 
@@ -47,7 +52,7 @@ However, oauth only allow reading.
 
 ## Displaying transaction details
 
-Each sensor can show the balance as well as a list of transactions.  
+Each account sensor can show the balance as well as a list of transactions.  
 You can use the custom card [html-template-card](https://github.com/piotrmachowski/home-assistant-lovelace-html-jinja2-template-card) to display them.
 
 Example of configuration:
@@ -58,66 +63,36 @@ title: Transactions
 ignore_line_breaks: true
 content: >
     <style>.bunq_table { width:100% } .bunq_table tr:nth-child(even) {background:
-    var(--material-secondary-background-color)}</style> <table class="bunq_table">
-    <tr> <th >Amount</th> <th>Description</th> <th>Time</th> </tr> {% for
-    transaction in state_attr('sensor.bunq_groceries', 'transactions') %}
+    var(--material-secondary-background-color)}</style>
+    <table class="bunq_table">
+        <tr>
+            <th>Amount</th> <th>Description</th> <th>Time</th>
+        </tr>
 
-    <tr>
+        {% for transaction in state_attr('sensor.bunq_groceries', 'transactions') %}
+        <tr>
+            <td style="width: 20%;text-align:right">
+            {{ transaction.amount }}&nbsp;{{ transaction.currency }}
+            </td>
 
-    <td style="width: 20%;text-align:right">
+            <td style="padding:0 0.5em">
+            {{ transaction.description }}
+            </td>
 
-    {{ transaction.amount }}&nbsp;{{ transaction.currency }}
-
-    </td>
-
-    <td style="padding:0 0.5em">
-
-    {{ transaction.description }}
-
-    </td>
-
-    <td style="width: 20%;">
-
-    {% set created = as_timestamp(now()) - (strptime(transaction.created,
-    '%Y-%m-%d %H:%M:%S.%f') + now().utcoffset()).timestamp() %}
-
-    {% set days = (created // (60 * 60 * 24)) | int %}
-
-    {% set weeks = (days // 7) | int %}
-
-    {% set hours = (created // (60 * 60)) | int %}
-
-    {% set hours =  hours - days * 24 %}
-
-    {% set minutes = (created // 60) | int %}
-
-    {% set minutes = minutes - (days * 24 * 60) - (hours * 60) %}
-
-    {% set days = (days | int) - (weeks * 7) %}
-
-    {% macro phrase(value, name) %}
-
-    {%- set value = value | int %}
-
-    {{- '{}{}'.format(value, name) if value | int > 0 else '' }}
-
-    {%- endmacro %}
-
-    {% set text = [ phrase(weeks, 'w'), phrase(days, 'd'), phrase(hours, 'h'),
-    phrase(minutes, 'm') ] | select('!=','') | list | join(', ') %}
-
-    {% set last_comma = text.rfind(',') %}
-
-    {% set text = text[:last_comma] + text[last_comma + 1:] %} {{text}} </td>
-
-    </tr>
-
-    {% endfor %}
-
+            <td style="width: 20%;">
+            {{ strptime(transaction.created, '%Y-%m-%d %H:%M:%S.%f') | relative_time }}
+            </td>
+        </tr>
+        {% endfor %}
     </table>
 ```
 
 ## CHANGELOG
+
+#### V2.1.0
+
+-   Add card sensor and service
+-   Add transfer service
 
 #### V2.0.0
 
