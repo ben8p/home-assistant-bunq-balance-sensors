@@ -256,7 +256,7 @@ class BunqApi:
     async def _fetch_monetary_accounts(self):
         return await self._request(
             hdrs.METH_GET,
-            f"/v1/user/{self.status.user_id}/monetary-account",
+            f"/v1/user/{self.status.user_id}/monetary-account?count=25",
             token=self.status.session_token,
         )
 
