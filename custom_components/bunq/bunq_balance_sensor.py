@@ -16,7 +16,7 @@ class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, account) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = account["id"]
+        self._attr_unique_id = str(account["id"])
         self.object_id = "bunq_" + account["description"].lower().replace(" ", "_")
         self.entity_description = SensorEntityDescription(
             key=account["id"],
