@@ -16,7 +16,7 @@ class BunqCardSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, card) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = card["id"]
+        self._attr_unique_id = str(card["id"])
         self.object_id = "card_" + str(card["id"])
         self.entity_description = SensorEntityDescription(
             key=card["id"],
