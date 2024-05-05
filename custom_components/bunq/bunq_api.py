@@ -4,6 +4,7 @@ import asyncio
 import json
 import random
 import socket
+import time
 from base64 import b64encode
 from typing import Awaitable, Callable, Optional
 
@@ -247,6 +248,7 @@ class BunqApi:
         self.status.update_account_transactions(account_id, transactions)
 
     async def _fetch_monetary_account_transactions(self, account_id):
+        time.sleep(3)
         return await self._request(
             hdrs.METH_GET,
             f"/v1/user/{self.status.user_id}/monetary-account/{account_id}/payment",
