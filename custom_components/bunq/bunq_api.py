@@ -281,7 +281,7 @@ class BunqApi:
             del pin["updated"]
             del pin["status"]
             if pin["type"] == "PRIMARY":
-                pin["monetary_account_id"] = account_id
+                pin["monetary_account_id"] = int(account_id)
 
         body = {"pin_code_assignment": pins}
         str_body = json.dumps(body)
