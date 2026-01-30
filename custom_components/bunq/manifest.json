@@ -7,7 +7,7 @@
 	"iot_class": "cloud_polling",
 	"requirements": [],
 	"codeowners": [
-		"@BSantalucia"
+		"@ben8p"
 	],
 	"config_flow": true,
 	"dependencies": [
