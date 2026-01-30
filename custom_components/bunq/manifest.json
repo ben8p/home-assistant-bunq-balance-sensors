@@ -3,6 +3,8 @@
 	"name": "bunq",
 	"version": "2.1.0",
 	"documentation": "https://github.com/ben8p/home-assistant-bunq-balance-sensors/",
+	"issue_tracker": "https://github.com/ben8p/home-assistant-bunq-balance-sensors/issues",
+	"iot_class": "cloud_polling",
 	"requirements": [],
 	"codeowners": [
 		"@BSantalucia"
