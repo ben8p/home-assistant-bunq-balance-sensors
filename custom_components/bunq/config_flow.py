@@ -25,7 +25,7 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow handler."""
-        return BunqOptionsFlowHandler(config_entry)
+        return BunqOptionsFlowHandler()
 
     @property
     def logger(self) -> logging.Logger:
@@ -67,10 +67,6 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
 class BunqOptionsFlowHandler(OptionsFlow):
     """Handle bunq options."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
