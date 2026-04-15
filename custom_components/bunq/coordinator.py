@@ -9,7 +9,7 @@ from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
                                                       UpdateFailed)
 
 from .bunq_api import BunqApi
-from .const import DOMAIN, ENVIRONMENT, LOGGER, UPDATE_INTERVAL
+from .const import CONF_ALLOW_DYNAMIC_IP, DOMAIN, ENVIRONMENT, LOGGER, UPDATE_INTERVAL
 from .exceptions import BunqApiError
 from .models import BunqStatus
 
@@ -30,12 +30,15 @@ class BunqDataUpdateCoordinator(DataUpdateCoordinator):
             LOGGER.debug(str(token))
             return str(token)
 
+        allow_dynamic_ip = entry.options.get(CONF_ALLOW_DYNAMIC_IP, False)
+
         client_session = async_get_clientsession(hass)
         self.bunq = BunqApi(
             environment=ENVIRONMENT,
             token=session.token["access_token"],
             session=client_session,
             token_refresh_method=async_token_refresh,
+            allow_dynamic_ip=allow_dynamic_ip,
         )
 
         super().__init__(hass, LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)

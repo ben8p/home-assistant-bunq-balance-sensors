@@ -37,6 +37,7 @@ class BunqApi:
         request_timeout: int = 8,
         session: Optional[ClientSession] = None,
         token_refresh_method: Optional[Callable[[], Awaitable[str]]] = None,
+        allow_dynamic_ip: bool = False,
     ) -> None:
         """Initialize connection with the Bunq API."""
         self.keys = None
@@ -45,6 +46,7 @@ class BunqApi:
         self._session = session
         self.request_timeout = request_timeout
         self.token = token
+        self.allow_dynamic_ip = allow_dynamic_ip
         LOGGER.debug("Session token: %s", token)
         self.token_refresh_method = token_refresh_method
         self._request_id = self._get_request_id(20)
@@ -352,6 +354,9 @@ class BunqApi:
             "description": "Home Assistant",
             "secret": self.token,
         }
+        if self.allow_dynamic_ip:
+            body["permitted_ips"] = ["*"]
+            LOGGER.info("Registering device server with wildcard permitted_ips (dynamic IP mode enabled)")
         device_server = await self._request(
             hdrs.METH_POST, "/v1/device-server", token=installation_token, json=body
         )
