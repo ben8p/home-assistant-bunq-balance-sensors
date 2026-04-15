@@ -1,0 +1,15 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "bunq options",
+        "data": {
+          "allow_dynamic_ip": "Allow dynamic IP address"
+        },
+        "data_description": {
+          "allow_dynamic_ip": "Register the device server with a wildcard IP (`*`) instead of your current IP. Enable this if your ISP assigns a new IP address frequently. Note: this reduces account security."
+        }
+      }
+    }
+  }
+}

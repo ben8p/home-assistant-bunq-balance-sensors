@@ -36,3 +36,5 @@ ATTR_TO_ACCOUNT_ENTITY = "to_account_entity"
 ATTR_ACCOUNT_ENTITY = "account_entity"
 ATTR_CARD_ENTITY = "card_entity"
 ATTR_MESSAGE = "message"
+
+CONF_ALLOW_DYNAMIC_IP: Final = "allow_dynamic_ip"
