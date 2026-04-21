@@ -69,21 +69,17 @@ class BunqOAuth2Implementation(AuthImplementation):
         LOGGER.debug("async_resolve_external_data: redirect_uri=%s", redirect_uri)
 
         token_base_url = ENVIRONMENT_URLS[ENVIRONMENT]["token_url"]
-        self.token_url = (
-            f"{token_base_url}"
-            f"?grant_type=authorization_code"
-            f"&client_id={self.client_id}"
-            f"&client_secret={self.client_secret}"
-            f"&code={external_data['code']}"
-            f"&redirect_uri={redirect_uri}"
-        )
         LOGGER.debug(
-            "async_resolve_external_data: requesting token from %s (secret and code redacted)",
+            "async_resolve_external_data: requesting token from %s",
             token_base_url,
         )
 
         try:
-            token = await self._token_request({})
+            token = await self._token_request({
+                "grant_type": "authorization_code",
+                "code": external_data["code"],
+                "redirect_uri": redirect_uri,
+            })
         except Exception as err:
             LOGGER.error("async_resolve_external_data: token request failed: %s", err, exc_info=True)
             raise
