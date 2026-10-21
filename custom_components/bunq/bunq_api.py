@@ -47,7 +47,6 @@ class BunqApi:
         self.request_timeout = request_timeout
         self.token = token
         self.allow_dynamic_ip = allow_dynamic_ip
-        LOGGER.debug("Session token: %s", token)
         self.token_refresh_method = token_refresh_method
         self._request_id = self._get_request_id(20)
 
@@ -56,6 +55,14 @@ class BunqApi:
         if self._session and self._close_session:
             await self._session.close()
             LOGGER.debug("Session closed")
+
+    @staticmethod
+    def _redact(value):
+        """Mask credentials before a mapping is logged."""
+        if not isinstance(value, dict):
+            return value
+        sensitive = {"secret", "x-bunq-client-authentication"}
+        return {k: "***" if k.lower() in sensitive else v for k, v in value.items()}
 
     def _get_request_id(self, length):
         rid = ""
@@ -75,7 +82,7 @@ class BunqApi:
         signature = kwargs.pop("signature", "")
 
         LOGGER.debug("Executing %s API request to %s", method, url)
-        LOGGER.debug("With body %s", str(kwargs.get("json")))
+        LOGGER.debug("With body %s", self._redact(kwargs.get("json")))
 
         headers["Content-Type"] = "application/json"
         headers["User-Agent"] = "HomeAssistant"
@@ -87,7 +94,7 @@ class BunqApi:
             headers["X-Bunq-Client-Authentication"] = token
         headers["X-Bunq-Client-Request-Id"] = self._request_id
 
-        LOGGER.debug("With headers: %s", str(headers))
+        LOGGER.debug("With headers: %s", self._redact(headers))
         if self._session is None:
             self._session = ClientSession()
             LOGGER.debug("New session created")
@@ -135,10 +142,10 @@ class BunqApi:
 
         if "application/json" in content_type:
             result = await response.json()
-            LOGGER.debug("Response: %s", str(result))
+            LOGGER.debug("Response received (status %d)", response.status)
             return result
         result = await response.text()
-        LOGGER.debug("Response: %s", str(result))
+        LOGGER.debug("Response received (status %d)", response.status)
         return result
 
     async def update(self) -> BunqStatus:
@@ -347,7 +354,6 @@ class BunqApi:
             "/v1/installation",
             json={"client_public_key": public_key_client},
         )
-        LOGGER.debug("installation response: %s", installation)
         installation_token = self._get_token(installation)
 
         body = {
@@ -360,7 +366,6 @@ class BunqApi:
         device_server = await self._request(
             hdrs.METH_POST, "/v1/device-server", token=installation_token, json=body
         )
-        LOGGER.debug("device-server response: %s", device_server)
 
         body = {"secret": self.token}
         str_body = json.dumps(body)

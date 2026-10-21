@@ -27,7 +27,7 @@ class BunqDataUpdateCoordinator(DataUpdateCoordinator):
         async def async_token_refresh() -> str:
             await session.async_ensure_token_valid()
             token = session.token["access_token"]
-            LOGGER.debug(str(token))
+            LOGGER.debug("OAuth token validated")
             return str(token)
 
         allow_dynamic_ip = entry.options.get(CONF_ALLOW_DYNAMIC_IP, False)
