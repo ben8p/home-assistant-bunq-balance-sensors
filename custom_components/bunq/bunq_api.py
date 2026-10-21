@@ -198,21 +198,35 @@ class BunqApi:
     async def _update_accounts_no_retry(self):
         data = await self._fetch_monetary_accounts()
         LOGGER.debug("get_active_accounts response: %s", data)
+        joint_data = await self._fetch_monetary_accounts_joint()
+        LOGGER.debug("get_active_joint_accounts response: %s", joint_data)
         accounts = []
-        for value in data["Response"]:
-            for account_type in [
-                key
-                for key in value
-                if key
-                in [
-                    "MonetaryAccountBank",
-                    "MonetaryAccountJoint",
-                    "MonetaryAccountLight",
-                    "MonetaryAccountSavings",
-                ]
-            ]:
-                item = value[account_type]
-                if "status" in item and item["status"] == "ACTIVE":
+        seen_ids = set()
+        for response in (data, joint_data):
+            for value in response["Response"]:
+                for account_type in [
+                    key
+                    for key in value
+                    if key
+                    in [
+                        "MonetaryAccountBank",
+                        "MonetaryAccountJoint",
+                        "MonetaryAccountLight",
+                        "MonetaryAccountSavings",
+                    ]
+                ]:
+                    item = value[account_type]
+                    if item.get("status") != "ACTIVE":
+                        LOGGER.debug(
+                            "Skipping %s %s with status %s",
+                            account_type,
+                            item.get("id"),
+                            item.get("status"),
+                        )
+                        continue
+                    if item["id"] in seen_ids:
+                        continue
+                    seen_ids.add(item["id"])
                     accounts.append(item)
         self.status.update_accounts(accounts)
 
@@ -266,6 +280,13 @@ class BunqApi:
         return await self._request(
             hdrs.METH_GET,
             f"/v1/user/{self.status.user_id}/monetary-account?count=25",
+            token=self.status.session_token,
+        )
+
+    async def _fetch_monetary_accounts_joint(self):
+        return await self._request(
+            hdrs.METH_GET,
+            f"/v1/user/{self.status.user_id}/monetary-account-joint?count=25",
             token=self.status.session_token,
         )
 
