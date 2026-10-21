@@ -37,4 +37,7 @@ ATTR_ACCOUNT_ENTITY = "account_entity"
 ATTR_CARD_ENTITY = "card_entity"
 ATTR_MESSAGE = "message"
 
-CONF_ALLOW_DYNAMIC_IP: Final = "allow_dynamic_ip"
+CONF_AUTH_TYPE: Final = "auth_type"
+CONF_API_KEY: Final = "api_key"
+AUTH_TYPE_OAUTH: Final = "oauth"
+AUTH_TYPE_API_KEY: Final = "api_key"

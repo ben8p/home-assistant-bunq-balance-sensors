@@ -1,15 +1,40 @@
 {
-  "options": {
+  "config": {
     "step": {
-      "init": {
-        "title": "bunq options",
+      "user": {
+        "title": "Connect to bunq",
+        "description": "Choose how Home Assistant connects to bunq.\n\n**OAuth**\n- Pro: you authorize through bunq, there is no key to copy around, and access is limited to the IP address of your Home Assistant.\n- Con: when your ISP changes that IP address, bunq blocks access and you must re-authorize.\n- Best with a static IP address.\n\n**API key**\n- Pro: keeps working when your IP address changes.\n- Con: you must allow all IP addresses for the key, so anyone holding it can use it from anywhere. The key gives broad access to your accounts, including payments. Keep it secret.\n- Best with a dynamic IP address.",
+        "menu_options": {
+          "oauth": "OAuth (recommended with a static IP)",
+          "api_key": "API key (for dynamic IP)"
+        }
+      },
+      "api_key": {
+        "title": "bunq API key",
+        "description": "In the bunq app go to Settings → Developers → API keys → Add an API key. Then open the menu of that key and tap \"Allow All IP Addresses\" if your IP address changes. Paste the key here.",
         "data": {
-          "allow_dynamic_ip": "Allow dynamic IP address"
-        },
-        "data_description": {
-          "allow_dynamic_ip": "Register the device server with a wildcard IP (`*`) instead of your current IP. Enable this if your ISP assigns a new IP address frequently. Note: this reduces account security."
+          "api_key": "API key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authentication required",
+        "description": "bunq rejected the stored credentials. This usually happens when your IP address changed. Re-authenticate to continue. If this keeps happening, remove the integration and add it again using an API key that allows all IP addresses."
+      },
+      "reauth_api_key": {
+        "title": "bunq API key",
+        "description": "Enter a new API key. In the bunq app, tap \"Allow All IP Addresses\" in the key's menu if your IP address changes.",
+        "data": {
+          "api_key": "API key"
         }
       }
+    },
+    "error": {
+      "invalid_auth": "bunq rejected this API key",
+      "cannot_connect": "Could not reach bunq"
+    },
+    "abort": {
+      "oauth_error": "Authorization with bunq failed. Check the logs for details.",
+      "reauth_successful": "Re-authentication was successful"
     }
   }
 }

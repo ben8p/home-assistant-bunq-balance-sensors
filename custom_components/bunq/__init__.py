@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.config_entry_oauth2_flow import (
     OAuth2Session, async_get_config_entry_implementation)
 
-from .const import DOMAIN
+from .const import AUTH_TYPE_API_KEY, AUTH_TYPE_OAUTH, CONF_AUTH_TYPE, DOMAIN
 from .coordinator import BunqDataUpdateCoordinator
 from .services import async_setup_services
 
@@ -15,9 +15,10 @@ PLATFORMS = [Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Bunq from a config entry."""
-    implementation = await async_get_config_entry_implementation(hass, entry)
-
-    oauth_session = OAuth2Session(hass, entry, implementation)
+    oauth_session = None
+    if entry.data.get(CONF_AUTH_TYPE, AUTH_TYPE_OAUTH) != AUTH_TYPE_API_KEY:
+        implementation = await async_get_config_entry_implementation(hass, entry)
+        oauth_session = OAuth2Session(hass, entry, implementation)
     coordinator = BunqDataUpdateCoordinator(hass, entry=entry, session=oauth_session)
 
     await coordinator.async_config_entry_first_refresh()
@@ -26,8 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_setup_services(hass, coordinator)
-
-    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     return True
 
@@ -38,7 +37,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         del hass.data[DOMAIN][entry.entry_id]
     return unload_ok
 
-
-async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload the config entry when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)

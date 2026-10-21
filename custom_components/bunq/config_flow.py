@@ -6,115 +6,129 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import \
     AbstractOAuth2FlowHandler
 
 from .bunq_api import BunqApi
-from .const import CONF_ALLOW_DYNAMIC_IP, DOMAIN, ENVIRONMENT, LOGGER
+from .const import (AUTH_TYPE_API_KEY, AUTH_TYPE_OAUTH, CONF_API_KEY,
+                    CONF_AUTH_TYPE, DOMAIN, ENVIRONMENT, LOGGER)
+from .exceptions import BunqApiConnectionError, BunqApiError
+from .models import BunqStatus
 
 
 class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
-    """Config flow to handle Bunq OAuth2 authentication."""
+    """Config flow to handle Bunq authentication (OAuth2 or API key)."""
 
     DOMAIN = DOMAIN
     VERSION = 1
-
-    @staticmethod
-    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        """Return the options flow handler."""
-        return BunqOptionsFlowHandler()
 
     @property
     def logger(self) -> logging.Logger:
         """Return logger."""
         return logging.getLogger(__name__)
 
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Let the user choose between OAuth and an API key."""
+        return self.async_show_menu(
+            step_id="user", menu_options=[AUTH_TYPE_OAUTH, AUTH_TYPE_API_KEY]
+        )
+
+    async def async_step_oauth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Continue with the OAuth2 flow."""
+        return await super().async_step_user(user_input)
+
+    async def async_step_api_key(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask for a bunq API key."""
+        return await self._async_step_api_key("api_key", user_input)
+
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
         """Perform reauth upon an API authentication error."""
-        LOGGER.debug("async_step_reauth: reauth required, moving to confirm step")
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Dialog that informs the user that reauth is required."""
-        LOGGER.debug("async_step_reauth_confirm: user_input=%s", user_input is not None)
         if user_input is None:
             return self.async_show_form(step_id="reauth_confirm")
-        LOGGER.debug("async_step_reauth_confirm: confirmed, starting user step")
-        return await self.async_step_user()
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        if entry.data.get(CONF_AUTH_TYPE) == AUTH_TYPE_API_KEY:
+            return await self.async_step_reauth_api_key()
+        return await self.async_step_oauth()
+
+    async def async_step_reauth_api_key(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask for a new bunq API key."""
+        return await self._async_step_api_key("reauth_api_key", user_input)
+
+    async def _async_step_api_key(
+        self, step_id: str, user_input: dict[str, Any] | None
+    ) -> FlowResult:
+        """Validate an API key and create or update the entry."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            api_key = user_input[CONF_API_KEY].strip()
+            try:
+                status = await self._async_connect(api_key)
+            except BunqApiConnectionError:
+                errors["base"] = "cannot_connect"
+            except BunqApiError as err:
+                LOGGER.error("API key validation failed: %s", err.get_message())
+                errors["base"] = "invalid_auth"
+            else:
+                return await self._async_finish(
+                    status.user_id,
+                    {CONF_AUTH_TYPE: AUTH_TYPE_API_KEY, CONF_API_KEY: api_key},
+                )
+
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema({vol.Required(CONF_API_KEY): str}),
+            errors=errors,
+        )
+
+    async def _async_connect(self, token: str) -> BunqStatus:
+        """Connect to bunq with the given token and return the fetched status."""
+        api = BunqApi(
+            environment=ENVIRONMENT,
+            token=token,
+            session=async_get_clientsession(self.hass),
+        )
+        status = await api.update()
+        if not status.user_id or not status.session_token:
+            raise BunqApiError(401, {"message": "no user or session returned"})
+        return status
+
+    async def _async_finish(self, user_id: str, data: dict[str, Any]) -> FlowResult:
+        """Create the entry, or update the existing one (reauth)."""
+        if existing_entry := await self.async_set_unique_id(user_id.lower()):
+            self.hass.config_entries.async_update_entry(existing_entry, data=data)
+            await self.hass.config_entries.async_reload(existing_entry.entry_id)
+            return self.async_abort(reason="reauth_successful")
+        return self.async_create_entry(title=user_id, data=data)
 
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> FlowResult:
         """Create an oauth config entry or update existing entry for reauth."""
-        LOGGER.debug("async_oauth_create_entry: received token data keys=%s", list(data.get("token", {}).keys()))
-
         token = data.get("token", {})
         if not token.get("access_token"):
             LOGGER.error("async_oauth_create_entry: access_token missing from token data")
             return self.async_abort(reason="oauth_error")
 
-        LOGGER.debug("async_oauth_create_entry: creating BunqApi and calling update()")
         try:
-            api = BunqApi(
-                environment=ENVIRONMENT,
-                token=token["access_token"],
-                session=async_get_clientsession(self.hass),
-            )
-            status = await api.update()
-        except Exception as err:
-            LOGGER.error("async_oauth_create_entry: BunqApi.update() failed: %s", err, exc_info=True)
+            status = await self._async_connect(token["access_token"])
+        except BunqApiError as err:
+            LOGGER.error("async_oauth_create_entry: update() failed: %s", err.get_message())
             return self.async_abort(reason="oauth_error")
 
-        LOGGER.debug(
-            "async_oauth_create_entry: update() result: user_id=%s, session_token_present=%s",
-            status.user_id,
-            bool(status.session_token),
-        )
-
-        if not status.user_id or not status.session_token:
-            LOGGER.error(
-                "async_oauth_create_entry: aborting — user_id=%s, session_token_present=%s",
-                status.user_id,
-                bool(status.session_token),
-            )
-            return self.async_abort(reason="oauth_error")
-
-        unique_id = status.user_id.lower()
-        LOGGER.debug("async_oauth_create_entry: setting unique_id=%s", unique_id)
-
-        if existing_entry := await self.async_set_unique_id(unique_id):
-            LOGGER.debug("async_oauth_create_entry: existing entry found, updating and reloading")
-            self.hass.config_entries.async_update_entry(existing_entry, data=data)
-            await self.hass.config_entries.async_reload(existing_entry.entry_id)
-            return self.async_abort(reason="reauth_successful")
-
-        LOGGER.debug("async_oauth_create_entry: creating new config entry for user_id=%s", status.user_id)
-        return self.async_create_entry(title=status.user_id, data=data)
-
-
-class BunqOptionsFlowHandler(OptionsFlow):
-    """Handle bunq options."""
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage bunq options."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_ALLOW_DYNAMIC_IP,
-                        default=self.config_entry.options.get(
-                            CONF_ALLOW_DYNAMIC_IP, False
-                        ),
-                    ): bool,
-                }
-            ),
+        return await self._async_finish(
+            status.user_id, {**data, CONF_AUTH_TYPE: AUTH_TYPE_OAUTH}
         )

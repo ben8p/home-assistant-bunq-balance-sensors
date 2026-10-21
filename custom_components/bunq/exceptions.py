@@ -17,6 +17,13 @@ class BunqApiError(Exception):
 
         return dumps(self.args[0])
 
+    def is_credentials_error(self):
+        """bunq rejects the credentials, typically because the IP address changed"""
+        return (
+            self.args[0] == 400
+            and "Incorrect API key or IP address" in self.get_message()
+        )
+
 
 class BunqApiConnectionError(BunqApiError):
     """BunqApi connection exception."""

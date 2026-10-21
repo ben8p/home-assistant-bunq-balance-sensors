@@ -26,8 +26,18 @@ If you are upgrading, before installing version 2.0.0 you should:
 
 ## Integration configuration
 
-Simply follow the config flow.
-The integration uses oauth.
+Simply follow the config flow. You can connect to bunq in two ways:
+
+|              | OAuth                                                                        | API key                                                                                   |
+| ------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Pros         | Authorized through bunq, no key to copy around, access limited to your IP    | Keeps working when your IP address changes                                               |
+| Cons         | bunq blocks access when your IP address changes, you must re-authorize       | Must allow all IP addresses; anyone holding the key can use it from anywhere              |
+| Best for     | A static IP address                                                          | A dynamic IP address (most residential ISPs)                                              |
+
+Neither method is read-only: according to bunq, OAuth tokens can by default also create payments and manage cards, and an API key has broad access too.
+
+### OAuth
+
 In order to get the "client id" and the "client secret" follow these steps:
 
 -   Open the bunq app
@@ -45,10 +55,18 @@ During the configuration process you will be redirected to `https://my.home-assi
 There, you need to enter the address on which your home assistant can be reached (it can be local ip/dns or external one)
 Then click on "Link Account"
 
-## Why oauth instead of API Key ?
+### API key
 
-oauth is much safer. API keys gives all writes to your accounts (including money transfert).
-However, oauth only allow reading.
+-   Open the bunq app
+-   Go to "Settings" > "Developers" > "API keys" and click "Add an API key"
+-   Open the menu of the new key and tap "Allow All IP Addresses"
+-   Paste the key in the integration
+
+### IP address changes
+
+bunq only accepts requests from the IP address that was registered when you connected.
+If it changes, bunq answers `User credentials are incorrect. Incorrect API key or IP address.`
+and Home Assistant asks you to re-authenticate. If this happens regularly, use an API key that allows all IP addresses.
 
 ## Displaying transaction details
 
@@ -88,6 +106,12 @@ content: >
 ```
 
 ## CHANGELOG
+
+#### V2.2.0
+
+-   Add API key authentication, as an alternative to oauth, for users whose IP address changes
+-   Ask to re-authenticate when bunq rejects the credentials (e.g. after an IP address change)
+-   Remove the "Allow dynamic IP address" option, bunq ignores the wildcard when sent through the API
 
 #### V2.1.0
 
