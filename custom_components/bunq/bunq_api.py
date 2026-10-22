@@ -154,9 +154,16 @@ class BunqApi:
         return self.status
 
     def _get_user_id(self, data):
+        # OAuth sessions return a UserApiKey, plain API key sessions return the user itself
         for value in data["Response"]:
-            if "UserApiKey" in value:
-                return value["UserApiKey"]["id"]
+            for user_type in (
+                "UserApiKey",
+                "UserPerson",
+                "UserCompany",
+                "UserLight",
+            ):
+                if user_type in value:
+                    return value[user_type]["id"]
 
     def _get_token(self, data):
         for value in data["Response"]:
@@ -369,6 +376,10 @@ class BunqApi:
         )
 
         user_id = self._get_user_id(session_server)
+        if user_id is None:
+            raise BunqApiError(
+                500, {"message": f"no user found in session response: {session_server}"}
+            )
         session_token = self._get_token(session_server)
         self.status.update_user(str(user_id), str(session_token))
         LOGGER.debug("context updated")
